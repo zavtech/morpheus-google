@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2016 Xavier Witdouck
+ * Copyright (C) 2014-2017 Xavier Witdouck
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,8 +44,10 @@ public class GoogleQuoteIntradayTest {
 
     @Test(dataProvider = "tickers")
     public void testQuoteRequest(String ticker) {
-        final GoogleQuoteIntradayOptions options = new GoogleQuoteIntradayOptions(ticker, 3);
-        final DataFrame<LocalDateTime,String> frame = source.read(options);
+        final DataFrame<LocalDateTime,String> frame = source.read(options -> {
+            options.setTicker(ticker);
+            options.setDayCount(5);
+        });
         Assert.assertTrue(frame.rowCount() > 0, "There are rows in the frame");
         Assert.assertTrue(frame.colCount() > 0, "There are columns in the frame");
         fields.forEach(field -> Assert.assertTrue(frame.cols().contains(field), "The DataFrame contains column for " + field));

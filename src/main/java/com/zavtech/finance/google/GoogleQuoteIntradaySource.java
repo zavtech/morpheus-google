@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014-2016 Xavier Witdouck
+ * Copyright (C) 2014-2017 Xavier Witdouck
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@ import com.zavtech.morpheus.frame.DataFrameException;
 import com.zavtech.morpheus.frame.DataFrameOptions;
 import com.zavtech.morpheus.frame.DataFrameSource;
 import com.zavtech.morpheus.index.Index;
+import com.zavtech.morpheus.util.Asserts;
 import com.zavtech.morpheus.util.TextStreamReader;
 
 /**
@@ -42,7 +43,7 @@ import com.zavtech.morpheus.util.TextStreamReader;
  *
  * <p><strong>This is open source software released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a></strong></p>
  */
-public class GoogleQuoteIntradaySource implements DataFrameSource<LocalDateTime,String,GoogleQuoteIntradayOptions> {
+public class GoogleQuoteIntradaySource extends DataFrameSource<LocalDateTime,String,GoogleQuoteIntradaySource.Options> {
 
     private String urlTemplate;
 
@@ -61,20 +62,16 @@ public class GoogleQuoteIntradaySource implements DataFrameSource<LocalDateTime,
         this.urlTemplate = urlTemplate;
     }
 
-    @Override
-    public <T extends Options<?,?>> boolean isSupported(T options) {
-        return options instanceof GoogleQuoteIntradayOptions;
-    }
 
     @Override
-    public DataFrame<LocalDateTime, String> read(GoogleQuoteIntradayOptions options) throws DataFrameException {
+    public DataFrame<LocalDateTime, String> read(Consumer<Options> configurator) throws DataFrameException {
         return DataFrameOptions.whileNotIgnoringDuplicates(() -> {
-            Options.validate(options);
             TextStreamReader reader = null;
+            final Options options = initOptions(new Options(), configurator);
             try {
                 long interval = 0L;
                 long startTime = 0L;
-                final URL url = new URL(urlTemplate.replace("<DAYS>", String.valueOf(options.getDayCount())).replace("<TICKER>", options.getTicker()));
+                final URL url = new URL(urlTemplate.replace("<DAYS>", String.valueOf(options.dayCount)).replace("<TICKER>", options.ticker));
                 reader = new TextStreamReader(url.openStream());
                 final Matcher intervalMatcher = Pattern.compile("INTERVAL=(\\d+)").matcher("");
                 final Matcher firstPriceLineMatcher = Pattern.compile("a(\\d+),(.*),(.*),(.*),(.*),(.*)").matcher("");
@@ -120,7 +117,7 @@ public class GoogleQuoteIntradaySource implements DataFrameSource<LocalDateTime,
                 }
                 return  calculateChanges(frame);
             } catch (Exception ex) {
-                throw new DataFrameException("Failed to load intraday quotes from Google finance for " + options.getTicker(), ex);
+                throw new DataFrameException("Failed to load intraday quotes from Google finance for " + options.ticker, ex);
             } finally {
                 if (reader != null) {
                     reader.close();
@@ -145,11 +142,41 @@ public class GoogleQuoteIntradaySource implements DataFrameSource<LocalDateTime,
     }
 
 
+    public class Options implements DataFrameSource.Options<LocalDateTime, String> {
+
+        private String ticker;
+        private int dayCount;
+
+        @Override
+        public void validate() {
+            Asserts.notNull(ticker, "The security ticker must be specified");
+            Asserts.assertTrue(dayCount > 0, "The day count must be > 0");
+        }
+
+        /**
+         * Sets the instrument ticker for this request
+         * @param ticker    the ticker reference
+         */
+        public void setTicker(String ticker) {
+            this.ticker = ticker;
+        }
+
+        /**
+         * Sets the day count for this request
+         * @param dayCount  the day count for request
+         */
+        public void setDayCount(int dayCount) {
+            this.dayCount = dayCount;
+        }
+    }
+
+
+
     public static void main(String[] args) {
         final Array<String> tickers = Array.of("AAPL", "MSFT", "ORCL", "GE", "C");
-        DataFrame.read().register(new GoogleQuoteIntradaySource());
+        DataFrameSource.register(new GoogleQuoteIntradaySource());
         tickers.forEach(ticker -> {
-            final DataFrame<LocalDateTime,String> frame = DataFrame.read().apply(GoogleQuoteIntradayOptions.class, options -> {
+            final DataFrame<LocalDateTime,String> frame = DataFrameSource.lookup(GoogleQuoteIntradaySource.class).read(options -> {
                 options.setTicker(ticker);
                 options.setDayCount(3);
             });
