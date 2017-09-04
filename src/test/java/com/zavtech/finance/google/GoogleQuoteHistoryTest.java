@@ -1,12 +1,12 @@
 /**
- * Copyright (C) 2014-2016 Xavier Witdouck
+ * Copyright (C) 2014-2017 Xavier Witdouck
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,8 +45,11 @@ public class GoogleQuoteHistoryTest {
     public void testQuoteRequest(String ticker) {
         final LocalDate start = LocalDate.of(2006, 1, 1);
         final LocalDate end = LocalDate.of(2009, 1, 1);
-        final GoogleQuoteHistoryOptions options = new GoogleQuoteHistoryOptions(ticker, start, end);
-        final DataFrame<LocalDate,String> frame = source.read(options);
+        final DataFrame<LocalDate,String> frame = source.read(options -> {
+            options.setTicker(ticker);
+            options.setStart(start);
+            options.setEnd(end);
+        });
         Assert.assertTrue(frame.rowCount() > 0, "There are rows in the frame");
         Assert.assertTrue(frame.colCount() > 0, "There are columns in the frame");
         fields.forEach(field -> Assert.assertTrue(frame.cols().contains(field), "The DataFrame contains column for " + field));
