@@ -4,7 +4,7 @@
 
   <test name="Google Basic Tests">
     <packages>
-      <package name="com.zavtech.finance.google.*"/>
+      <package name="com.zavtech.morpheus.google.*"/>
     </packages>
   </test>
 

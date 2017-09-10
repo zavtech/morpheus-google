@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.zavtech.finance.google;
+package com.zavtech.morpheus.google;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.stream.IntStream;
 
 import com.zavtech.morpheus.array.Array;
@@ -25,39 +25,35 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 /**
- * A unit test for the DataFrame source to load end of day quotes from Google Finance
+ * A unit test for the DataFrame source to load intraday quotes from Google Finance
  *
  * @author Xavier Witdouck
  *
  * <p><strong>This is open source software released under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache 2.0 License</a></strong></p>
  */
-public class GoogleQuoteHistoryTest {
+public class GoogleQuoteIntradayTest {
 
-    private GoogleQuoteHistorySource source = new GoogleQuoteHistorySource();
-    private Array<String> fields = Array.of("Open", "High", "Low", "Close", "Volume", "Change", "ChangePercent");
+    private GoogleQuoteIntradaySource source = new GoogleQuoteIntradaySource();
+    private Array<String> fields = Array.of("Open", "High", "Low", "Close", "Volume", "ChangePercent");
 
     @DataProvider(name="tickers")
     public Object[][] tickers() {
         return new Object[][] { {"AAPL"}, { "IBM" }, { "GE" }, { "MMM" } };
     }
 
+
     @Test(dataProvider = "tickers")
     public void testQuoteRequest(String ticker) {
-        final LocalDate start = LocalDate.of(2006, 1, 1);
-        final LocalDate end = LocalDate.of(2009, 1, 1);
-        final DataFrame<LocalDate,String> frame = source.read(options -> {
+        final DataFrame<LocalDateTime,String> frame = source.read(options -> {
             options.setTicker(ticker);
-            options.setStart(start);
-            options.setEnd(end);
+            options.setDayCount(5);
         });
         Assert.assertTrue(frame.rowCount() > 0, "There are rows in the frame");
         Assert.assertTrue(frame.colCount() > 0, "There are columns in the frame");
         fields.forEach(field -> Assert.assertTrue(frame.cols().contains(field), "The DataFrame contains column for " + field));
-        Assert.assertTrue(frame.rows().firstKey().get().compareTo(start) >= 0);
-        Assert.assertTrue(frame.rows().lastKey().get().compareTo(end) <= 0);
         IntStream.range(1, frame.rowCount()).forEach(rowIndex -> {
-            final LocalDate previous = frame.rows().key(rowIndex-1);
-            final LocalDate current = frame.rows().key(rowIndex);
+            final LocalDateTime previous = frame.rows().key(rowIndex-1);
+            final LocalDateTime current = frame.rows().key(rowIndex);
             final double previousClose = frame.data().getDouble(rowIndex-1, "Close");
             final double currentClose = frame.data().getDouble(rowIndex, "Close");
             final double expectedChange = currentClose - previousClose;
@@ -69,6 +65,5 @@ public class GoogleQuoteHistoryTest {
             Assert.assertEquals(frame.data().getDouble(rowIndex, "ChangePercent"), expectedChangePercent, 0.00001);
         });
     }
-
 
 }
